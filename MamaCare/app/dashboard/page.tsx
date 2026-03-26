@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Navigation } from "@/components/navigation"
 import { MedicalDisclaimer } from "@/components/medical-disclaimer"
@@ -19,17 +20,17 @@ import {
   Apple,
   Droplets,
   Moon,
+  Loader2,
 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
+import { db } from "@/lib/firebase"
+import { doc, getDoc, collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore"
 
-// Mock data - in real app this would come from database
-const pregnancyData = {
-  currentWeek: 24,
-  totalWeeks: 40,
-  dueDate: "July 15, 2026",
-  babySize: "an ear of corn",
-  babyLength: "30 cm",
-  babyWeight: "600 grams",
-  trimester: 2,
+// Mock weekly details for dashboard - in real app this would be more comprehensive
+const weeklyDetails: Record<number, { babySize: string, babyLength: string, babyWeight: string }> = {
+  24: { babySize: "an ear of corn", babyLength: "30 cm", babyWeight: "600 grams" },
+  25: { babySize: "a rutabaga", babyLength: "34 cm", babyWeight: "680 grams" },
+  // ... more weeks
 }
 
 const upcomingCheckups = [
@@ -51,7 +52,52 @@ const dailyTips = [
 ]
 
 export default function DashboardPage() {
-  const progressPercent = (pregnancyData.currentWeek / pregnancyData.totalWeeks) * 100
+  const { user } = useAuth()
+  const [profile, setProfile] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+
+    const fetchProfile = async () => {
+      try {
+        const docRef = doc(db, "users", user.uid)
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+          setProfile(docSnap.data().profile)
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [user])
+
+  const calculateWeek = (dueDate: string) => {
+    if (!dueDate) return 24 // default
+    const due = new Date(dueDate)
+    const today = new Date()
+    const diffTime = due.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const weeksRemaining = Math.floor(diffDays / 7)
+    const currentWeek = 40 - weeksRemaining
+    return currentWeek > 0 && currentWeek <= 40 ? currentWeek : 24
+  }
+
+  const currentWeek = profile?.dueDate ? calculateWeek(profile.dueDate) : 24
+  const progressPercent = (currentWeek / 40) * 100
+  const weekDetails = weeklyDetails[currentWeek] || weeklyDetails[24]
+
+  if (!user || isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,10 +108,10 @@ export default function DashboardPage() {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold sm:text-3xl">
-            Good Morning, Sarah
+            Good Morning, {profile?.firstName || user.displayName?.split(" ")[0] || "Mama"}
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Week {pregnancyData.currentWeek} of your pregnancy journey
+            Week {currentWeek} of your pregnancy journey
           </p>
         </div>
 
@@ -84,25 +130,25 @@ export default function DashboardPage() {
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-primary">Week {pregnancyData.currentWeek}</span>
-                      <span className="text-muted-foreground">of {pregnancyData.totalWeeks}</span>
+                      <span className="text-4xl font-bold text-primary">Week {currentWeek}</span>
+                      <span className="text-muted-foreground">of 40</span>
                     </div>
                     <Progress value={progressPercent} className="mt-3 h-3" />
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Trimester {pregnancyData.trimester} - Due {pregnancyData.dueDate}
+                      Trimester {currentWeek <= 13 ? 1 : currentWeek <= 27 ? 2 : 3} - Due {profile?.dueDate ? new Date(profile.dueDate).toLocaleDateString() : "Not set"}
                     </p>
                   </div>
                   <div className="rounded-xl bg-secondary/50 p-4">
                     <p className="text-sm font-medium text-muted-foreground">Your baby is the size of</p>
-                    <p className="mt-1 text-2xl font-semibold">{pregnancyData.babySize}</p>
+                    <p className="mt-1 text-2xl font-semibold">{weekDetails.babySize}</p>
                     <div className="mt-3 flex gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Length: </span>
-                        <span className="font-medium">{pregnancyData.babyLength}</span>
+                        <span className="font-medium">{weekDetails.babyLength}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Weight: </span>
-                        <span className="font-medium">{pregnancyData.babyWeight}</span>
+                        <span className="font-medium">{weekDetails.babyWeight}</span>
                       </div>
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Navigation } from "@/components/navigation"
 import { MedicalDisclaimer } from "@/components/medical-disclaimer"
@@ -22,8 +22,21 @@ import {
   Calendar,
   TrendingUp,
   ExternalLink,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import { db } from "@/lib/firebase"
+import { 
+  collection, 
+  addDoc, 
+  query, 
+  where, 
+  onSnapshot, 
+  orderBy, 
+  Timestamp,
+  limit 
+} from "firebase/firestore"
 
 // Edinburgh Postnatal Depression Scale (EPDS) questions
 const epdsQuestions = [
@@ -110,20 +123,61 @@ const selfCareTips = [
 ]
 
 export default function MentalHealthPage() {
+  const { user } = useAuth()
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [showResults, setShowResults] = useState(false)
   const [assessmentStarted, setAssessmentStarted] = useState(false)
+  const [previousAssessments, setPreviousAssessments] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+
+    const q = query(
+      collection(db, "mental_health_assessments"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(5)
+    )
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPreviousAssessments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+      setIsLoading(false)
+    })
+
+    return () => unsubscribe()
+  }, [user])
 
   const handleAnswer = (value: number) => {
     setAnswers({ ...answers, [epdsQuestions[currentQuestion].id]: value })
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestion < epdsQuestions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
     } else {
+      await saveAssessment()
       setShowResults(true)
+    }
+  }
+
+  const saveAssessment = async () => {
+    if (!user) return
+    setIsSaving(true)
+    const score = calculateScore()
+    try {
+      await addDoc(collection(db, "mental_health_assessments"), {
+        userId: user.uid,
+        score,
+        answers,
+        createdAt: Timestamp.now(),
+      })
+    } catch (error) {
+      console.error("Error saving assessment:", error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -173,6 +227,14 @@ export default function MentalHealthPage() {
   }
 
   const progress = ((currentQuestion + 1) / epdsQuestions.length) * 100
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -229,24 +291,35 @@ export default function MentalHealthPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <p className="font-medium">Last Check-in: March 12, 2026</p>
-                      <p className="text-sm text-muted-foreground">Score: 6/30 - Low Risk</p>
+                  {isLoading ? (
+                    <div className="py-4 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
                     </div>
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <p className="font-medium">February 26, 2026</p>
-                      <p className="text-sm text-muted-foreground">Score: 8/30 - Low Risk</p>
+                  ) : previousAssessments.length === 0 ? (
+                    <div className="py-4 text-center text-muted-foreground text-sm">
+                      No previous assessments found.
                     </div>
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  </div>
+                  ) : previousAssessments.map((assessment) => (
+                    <div key={assessment.id} className="flex items-center justify-between rounded-lg border border-border p-4">
+                      <div>
+                        <p className="font-medium">
+                          Check-in: {assessment.createdAt?.toDate().toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' })}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Score: {assessment.score}/30 - {getScoreInterpretation(assessment.score).title}
+                        </p>
+                      </div>
+                      <CheckCircle className={cn("h-5 w-5", assessment.score <= 8 ? "text-green-600" : assessment.score <= 12 ? "text-amber-600" : "text-red-600")} />
+                    </div>
+                  ))}
                 </div>
                 <p className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Next recommended check-in: March 26, 2026
+                  {previousAssessments.length > 0 ? (
+                    <>Next recommended check-in: {new Date(previousAssessments[0].createdAt?.toDate().getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}</>
+                  ) : (
+                    <>Recommended check-in: Bi-weekly</>
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -447,8 +520,9 @@ export default function MentalHealthPage() {
               </Button>
               <Button
                 onClick={handleNext}
-                disabled={answers[epdsQuestions[currentQuestion].id] === undefined}
+                disabled={answers[epdsQuestions[currentQuestion].id] === undefined || isSaving}
               >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {currentQuestion === epdsQuestions.length - 1 ? "See Results" : "Next"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

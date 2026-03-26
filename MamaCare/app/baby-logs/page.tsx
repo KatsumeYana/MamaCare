@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Navigation } from "@/components/navigation"
 import { MedicalDisclaimer } from "@/components/medical-disclaimer"
@@ -37,63 +37,202 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import { db } from "@/lib/firebase"
+import { 
+  collection, 
+  addDoc, 
+  query, 
+  where, 
+  onSnapshot, 
+  orderBy, 
+  Timestamp 
+} from "firebase/firestore"
 
 interface FeedingLog {
   id: string
+  userId: string
   type: "breast" | "bottle" | "formula"
   side?: "left" | "right" | "both"
   duration?: number
   amount?: number
   time: string
   date: string
+  createdAt: any
 }
 
 interface DiaperLog {
   id: string
+  userId: string
   type: "wet" | "dirty" | "both"
   color?: string
   time: string
   date: string
+  createdAt: any
 }
 
 interface SleepLog {
   id: string
+  userId: string
   startTime: string
   endTime: string
   duration: number
   date: string
+  createdAt: any
 }
 
-// Mock data
-const mockFeedings: FeedingLog[] = [
-  { id: "1", type: "breast", side: "left", duration: 15, time: "08:30 AM", date: "2026-03-26" },
-  { id: "2", type: "breast", side: "right", duration: 12, time: "11:45 AM", date: "2026-03-26" },
-  { id: "3", type: "bottle", amount: 120, time: "03:00 PM", date: "2026-03-26" },
-  { id: "4", type: "breast", side: "both", duration: 20, time: "06:30 PM", date: "2026-03-26" },
-]
-
-const mockDiapers: DiaperLog[] = [
-  { id: "1", type: "wet", time: "07:00 AM", date: "2026-03-26" },
-  { id: "2", type: "dirty", color: "yellow", time: "09:30 AM", date: "2026-03-26" },
-  { id: "3", type: "wet", time: "12:00 PM", date: "2026-03-26" },
-  { id: "4", type: "both", color: "yellow-green", time: "04:00 PM", date: "2026-03-26" },
-  { id: "5", type: "wet", time: "07:30 PM", date: "2026-03-26" },
-]
-
-const mockSleep: SleepLog[] = [
-  { id: "1", startTime: "09:00 AM", endTime: "10:30 AM", duration: 90, date: "2026-03-26" },
-  { id: "2", startTime: "01:00 PM", endTime: "03:00 PM", duration: 120, date: "2026-03-26" },
-  { id: "3", startTime: "08:00 PM", endTime: "11:30 PM", duration: 210, date: "2026-03-26" },
-]
-
 export default function BabyLogsPage() {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState("feeding")
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [feedings, setFeedings] = useState<FeedingLog[]>([])
+  const [diapers, setDiapers] = useState<DiaperLog[]>([])
+  const [sleep, setSleep] = useState<SleepLog[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
   const [feedingDialogOpen, setFeedingDialogOpen] = useState(false)
   const [diaperDialogOpen, setDiaperDialogOpen] = useState(false)
   const [sleepDialogOpen, setSleepDialogOpen] = useState(false)
+
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Form states
+  const [feedingForm, setFeedingForm] = useState({
+    type: "breast",
+    side: "left",
+    duration: "15",
+    amount: "",
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+  })
+
+  const [diaperForm, setDiaperForm] = useState({
+    type: "wet",
+    color: "yellow",
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+  })
+
+  const [sleepForm, setSleepForm] = useState({
+    startTime: "",
+    endTime: "",
+    notes: "",
+  })
+
+  useEffect(() => {
+    if (!user) return
+
+    const dateStr = selectedDate.toISOString().split('T')[0]
+
+    const feedingsQuery = query(
+      collection(db, "feedings"),
+      where("userId", "==", user.uid),
+      where("date", "==", dateStr),
+      orderBy("createdAt", "desc")
+    )
+
+    const diapersQuery = query(
+      collection(db, "diapers"),
+      where("userId", "==", user.uid),
+      where("date", "==", dateStr),
+      orderBy("createdAt", "desc")
+    )
+
+    const sleepQuery = query(
+      collection(db, "sleep"),
+      where("userId", "==", user.uid),
+      where("date", "==", dateStr),
+      orderBy("createdAt", "desc")
+    )
+
+    const unsubscribeFeedings = onSnapshot(feedingsQuery, (snapshot) => {
+      setFeedings(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeedingLog)))
+      setIsLoading(false)
+    })
+
+    const unsubscribeDiapers = onSnapshot(diapersQuery, (snapshot) => {
+      setDiapers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DiaperLog)))
+    })
+
+    const unsubscribeSleep = onSnapshot(sleepQuery, (snapshot) => {
+      setSleep(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SleepLog)))
+    })
+
+    return () => {
+      unsubscribeFeedings()
+      unsubscribeDiapers()
+      unsubscribeSleep()
+    }
+  }, [user, selectedDate])
+
+  const handleSaveFeeding = async () => {
+    if (!user) return
+    setIsSaving(true)
+    try {
+      await addDoc(collection(db, "feedings"), {
+        userId: user.uid,
+        type: feedingForm.type,
+        side: feedingForm.type === "breast" ? feedingForm.side : null,
+        duration: feedingForm.type === "breast" ? parseInt(feedingForm.duration) : null,
+        amount: feedingForm.type !== "breast" ? parseInt(feedingForm.amount) : null,
+        time: feedingForm.time,
+        date: selectedDate.toISOString().split('T')[0],
+        createdAt: Timestamp.now(),
+      })
+      setFeedingDialogOpen(false)
+    } catch (error) {
+      console.error("Error saving feeding:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSaveDiaper = async () => {
+    if (!user) return
+    setIsSaving(true)
+    try {
+      await addDoc(collection(db, "diapers"), {
+        userId: user.uid,
+        type: diaperForm.type,
+        color: diaperForm.type !== "wet" ? diaperForm.color : null,
+        time: diaperForm.time,
+        date: selectedDate.toISOString().split('T')[0],
+        createdAt: Timestamp.now(),
+      })
+      setDiaperDialogOpen(false)
+    } catch (error) {
+      console.error("Error saving diaper:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSaveSleep = async () => {
+    if (!user) return
+    setIsSaving(true)
+    try {
+      const start = new Date(`2000-01-01T${sleepForm.startTime}`)
+      const end = new Date(`2000-01-01T${sleepForm.endTime}`)
+      let duration = (end.getTime() - start.getTime()) / (1000 * 60)
+      if (duration < 0) duration += 24 * 60
+
+      await addDoc(collection(db, "sleep"), {
+        userId: user.uid,
+        startTime: sleepForm.startTime,
+        endTime: sleepForm.endTime,
+        duration: duration,
+        notes: sleepForm.notes,
+        date: selectedDate.toISOString().split('T')[0],
+        createdAt: Timestamp.now(),
+      })
+      setSleepDialogOpen(false)
+    } catch (error) {
+      console.error("Error saving sleep:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
@@ -106,11 +245,19 @@ export default function BabyLogsPage() {
   }
 
   const getTotalFeedingTime = () => {
-    return mockFeedings.reduce((acc, f) => acc + (f.duration || 0), 0)
+    return feedings.reduce((acc, f) => acc + (f.duration || 0), 0)
   }
 
   const getTotalSleepTime = () => {
-    return mockSleep.reduce((acc, s) => acc + s.duration, 0)
+    return sleep.reduce((acc, s) => acc + s.duration, 0)
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
@@ -157,7 +304,7 @@ export default function BabyLogsPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <Utensils className="mx-auto h-6 w-6 text-primary" />
-              <p className="mt-2 text-2xl font-bold">{mockFeedings.length}</p>
+              <p className="mt-2 text-2xl font-bold">{feedings.length}</p>
               <p className="text-xs text-muted-foreground">Feedings</p>
               <p className="text-xs text-muted-foreground">{getTotalFeedingTime()} min total</p>
             </CardContent>
@@ -165,9 +312,9 @@ export default function BabyLogsPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <Droplets className="mx-auto h-6 w-6 text-accent" />
-              <p className="mt-2 text-2xl font-bold">{mockDiapers.length}</p>
+              <p className="mt-2 text-2xl font-bold">{diapers.length}</p>
               <p className="text-xs text-muted-foreground">Diapers</p>
-              <p className="text-xs text-muted-foreground">{mockDiapers.filter(d => d.type === "wet" || d.type === "both").length} wet</p>
+              <p className="text-xs text-muted-foreground">{diapers.filter(d => d.type === "wet" || d.type === "both").length} wet</p>
             </CardContent>
           </Card>
           <Card>
@@ -175,7 +322,7 @@ export default function BabyLogsPage() {
               <Moon className="mx-auto h-6 w-6 text-chart-3" />
               <p className="mt-2 text-2xl font-bold">{Math.floor(getTotalSleepTime() / 60)}h</p>
               <p className="text-xs text-muted-foreground">Sleep</p>
-              <p className="text-xs text-muted-foreground">{mockSleep.length} naps</p>
+              <p className="text-xs text-muted-foreground">{sleep.length} naps</p>
             </CardContent>
           </Card>
         </div>
@@ -218,7 +365,7 @@ export default function BabyLogsPage() {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label>Type</Label>
-                      <Select>
+                      <Select value={feedingForm.type} onValueChange={(val: any) => setFeedingForm({...feedingForm, type: val})}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -229,27 +376,51 @@ export default function BabyLogsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Side (for breastfeeding)</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select side" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="left">Left</SelectItem>
-                          <SelectItem value="right">Right</SelectItem>
-                          <SelectItem value="both">Both</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    {feedingForm.type === "breast" ? (
                       <div className="space-y-2">
-                        <Label>Duration (minutes)</Label>
-                        <Input type="number" placeholder="15" />
+                        <Label>Side (for breastfeeding)</Label>
+                        <Select value={feedingForm.side} onValueChange={(val: any) => setFeedingForm({...feedingForm, side: val})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select side" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="left">Left</SelectItem>
+                            <SelectItem value="right">Right</SelectItem>
+                            <SelectItem value="both">Both</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label>Amount (ml)</Label>
+                        <Input 
+                          type="number" 
+                          placeholder="120" 
+                          value={feedingForm.amount} 
+                          onChange={(e) => setFeedingForm({...feedingForm, amount: e.target.value})}
+                        />
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      {feedingForm.type === "breast" && (
+                        <div className="space-y-2">
+                          <Label>Duration (minutes)</Label>
+                          <Input 
+                            type="number" 
+                            placeholder="15" 
+                            value={feedingForm.duration} 
+                            onChange={(e) => setFeedingForm({...feedingForm, duration: e.target.value})}
+                          />
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <Label>Time</Label>
-                        <Input type="time" />
+                        <Input 
+                          type="text" 
+                          placeholder="08:30 AM" 
+                          value={feedingForm.time} 
+                          onChange={(e) => setFeedingForm({...feedingForm, time: e.target.value})}
+                        />
                       </div>
                     </div>
                   </div>
@@ -257,7 +428,10 @@ export default function BabyLogsPage() {
                     <Button variant="outline" onClick={() => setFeedingDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={() => setFeedingDialogOpen(false)}>Save</Button>
+                    <Button onClick={handleSaveFeeding} disabled={isSaving}>
+                      {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -265,7 +439,15 @@ export default function BabyLogsPage() {
 
             <Card>
               <CardContent className="p-0 divide-y divide-border">
-                {mockFeedings.map((feeding) => (
+                {isLoading ? (
+                  <div className="p-8 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                  </div>
+                ) : feedings.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No feedings logged for this day.
+                  </div>
+                ) : feedings.map((feeding) => (
                   <div key={feeding.id} className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">
                       <div className={cn(
@@ -315,7 +497,7 @@ export default function BabyLogsPage() {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label>Type</Label>
-                      <Select>
+                      <Select value={diaperForm.type} onValueChange={(val: any) => setDiaperForm({...diaperForm, type: val})}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -326,31 +508,41 @@ export default function BabyLogsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Stool Color (if dirty)</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select color" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="yellow">Yellow (Normal)</SelectItem>
-                          <SelectItem value="yellow-green">Yellow-Green</SelectItem>
-                          <SelectItem value="green">Green</SelectItem>
-                          <SelectItem value="brown">Brown</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {diaperForm.type !== "wet" && (
+                      <div className="space-y-2">
+                        <Label>Stool Color (if dirty)</Label>
+                        <Select value={diaperForm.color} onValueChange={(val: any) => setDiaperForm({...diaperForm, color: val})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select color" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="yellow">Yellow (Normal)</SelectItem>
+                            <SelectItem value="yellow-green">Yellow-Green</SelectItem>
+                            <SelectItem value="green">Green</SelectItem>
+                            <SelectItem value="brown">Brown</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Time</Label>
-                      <Input type="time" />
+                      <Input 
+                        type="text" 
+                        placeholder="09:30 AM" 
+                        value={diaperForm.time} 
+                        onChange={(e) => setDiaperForm({...diaperForm, time: e.target.value})}
+                      />
                     </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setDiaperDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={() => setDiaperDialogOpen(false)}>Save</Button>
+                    <Button onClick={handleSaveDiaper} disabled={isSaving}>
+                      {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -358,7 +550,15 @@ export default function BabyLogsPage() {
 
             <Card>
               <CardContent className="p-0 divide-y divide-border">
-                {mockDiapers.map((diaper) => (
+                {isLoading ? (
+                  <div className="p-8 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                  </div>
+                ) : diapers.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No diapers logged for this day.
+                  </div>
+                ) : diapers.map((diaper) => (
                   <div key={diaper.id} className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">
                       <div className={cn(
@@ -393,7 +593,7 @@ export default function BabyLogsPage() {
                   <div>
                     <h3 className="font-medium text-blue-700">Hydration Check</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {mockDiapers.filter(d => d.type === "wet" || d.type === "both").length} wet diapers today. 
+                      {diapers.filter(d => d.type === "wet" || d.type === "both").length} wet diapers today. 
                       Aim for 6-8 wet diapers per day for proper hydration.
                     </p>
                   </div>
@@ -424,23 +624,38 @@ export default function BabyLogsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Start Time</Label>
-                        <Input type="time" />
+                        <Input 
+                          type="time" 
+                          value={sleepForm.startTime} 
+                          onChange={(e) => setSleepForm({...sleepForm, startTime: e.target.value})}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>End Time</Label>
-                        <Input type="time" />
+                        <Input 
+                          type="time" 
+                          value={sleepForm.endTime} 
+                          onChange={(e) => setSleepForm({...sleepForm, endTime: e.target.value})}
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Notes (optional)</Label>
-                      <Input placeholder="e.g., Fussy before sleep" />
+                      <Input 
+                        placeholder="e.g., Fussy before sleep" 
+                        value={sleepForm.notes} 
+                        onChange={(e) => setSleepForm({...sleepForm, notes: e.target.value})}
+                      />
                     </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setSleepDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={() => setSleepDialogOpen(false)}>Save</Button>
+                    <Button onClick={handleSaveSleep} disabled={isSaving}>
+                      {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -448,18 +663,26 @@ export default function BabyLogsPage() {
 
             <Card>
               <CardContent className="p-0 divide-y divide-border">
-                {mockSleep.map((sleep) => (
-                  <div key={sleep.id} className="flex items-center justify-between p-4">
+                {isLoading ? (
+                  <div className="p-8 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                  </div>
+                ) : sleep.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No sleep logged for this day.
+                  </div>
+                ) : sleep.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
                         <Moon className="h-5 w-5" />
                       </div>
                       <div>
                         <p className="font-medium">
-                          {sleep.startTime} - {sleep.endTime}
+                          {item.startTime} - {item.endTime}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {Math.floor(sleep.duration / 60)}h {sleep.duration % 60}m
+                          {Math.floor(item.duration / 60)}h {Math.round(item.duration % 60)}m
                         </p>
                       </div>
                     </div>
@@ -481,7 +704,7 @@ export default function BabyLogsPage() {
                   <div>
                     <h3 className="font-medium text-indigo-700">Daily Sleep Summary</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Total sleep today: {Math.floor(getTotalSleepTime() / 60)} hours {getTotalSleepTime() % 60} minutes. 
+                      Total sleep today: {Math.floor(getTotalSleepTime() / 60)} hours {Math.round(getTotalSleepTime() % 60)} minutes. 
                       Newborns typically need 14-17 hours of sleep per day.
                     </p>
                   </div>

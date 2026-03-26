@@ -17,8 +17,12 @@ import {
   AlertCircle,
   XCircle,
   Info,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import { db } from "@/lib/firebase"
+import { collection, addDoc, Timestamp } from "firebase/firestore"
 
 type SeverityLevel = "emergency" | "urgent" | "monitor" | "normal"
 
@@ -56,12 +60,15 @@ const symptoms: Symptom[] = [
   // Normal symptoms
   { id: "heartburn", label: "Heartburn or indigestion", severity: "normal" },
   { id: "frequent-urination", label: "Frequent urination", severity: "normal" },
+  { id: "strong-kicks", label: "Strong baby movements", severity: "normal" },
   { id: "leg-cramps", label: "Leg cramps at night", severity: "normal" },
 ]
 
 export default function SymptomCheckerPage() {
+  const { user } = useAuth()
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([])
   const [showResults, setShowResults] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const toggleSymptom = (symptomId: string) => {
     setSelectedSymptoms((prev) =>
@@ -81,7 +88,22 @@ export default function SymptomCheckerPage() {
     return "normal"
   }
 
-  const handleCheckSymptoms = () => {
+  const handleCheckSymptoms = async () => {
+    if (user) {
+      setIsSaving(true)
+      try {
+        await addDoc(collection(db, "symptom_checks"), {
+          userId: user.uid,
+          selectedSymptoms,
+          highestSeverity: getHighestSeverity(),
+          createdAt: Timestamp.now(),
+        })
+      } catch (error) {
+        console.error("Error saving symptom check:", error)
+      } finally {
+        setIsSaving(false)
+      }
+    }
     setShowResults(true)
   }
 
@@ -130,6 +152,14 @@ export default function SymptomCheckerPage() {
   }
 
   const config = getSeverityConfig(severity)
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -295,8 +325,9 @@ export default function SymptomCheckerPage() {
               <Button
                 size="lg"
                 onClick={handleCheckSymptoms}
-                disabled={selectedSymptoms.length === 0}
+                disabled={selectedSymptoms.length === 0 || isSaving}
               >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Check My Symptoms
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

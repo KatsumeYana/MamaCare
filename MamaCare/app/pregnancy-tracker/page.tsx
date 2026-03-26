@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Navigation } from "@/components/navigation"
 import { MedicalDisclaimer } from "@/components/medical-disclaimer"
@@ -19,8 +19,12 @@ import {
   Ruler,
   Activity,
   AlertCircle,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import { db } from "@/lib/firebase"
+import { doc, getDoc } from "firebase/firestore"
 
 // Week data - in real app this would come from a database
 const weeklyData: Record<number, {
@@ -93,8 +97,47 @@ const trimesterWeeks = {
 }
 
 export default function PregnancyTrackerPage() {
+  const { user } = useAuth()
   const [currentWeek, setCurrentWeek] = useState(24)
+  const [isLoading, setIsLoading] = useState(true)
+  
   const weekData = weeklyData[currentWeek] || weeklyData[24]
+
+  useEffect(() => {
+    if (!user) return
+
+    const fetchProfile = async () => {
+      try {
+        const docRef = doc(db, "users", user.uid)
+        const docSnap = await getDoc(docRef)
+
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          if (data.profile?.dueDate) {
+            const calculatedWeek = calculateWeek(data.profile.dueDate)
+            if (calculatedWeek) setCurrentWeek(calculatedWeek)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [user])
+
+  const calculateWeek = (dueDate: string) => {
+    if (!dueDate) return null
+    const due = new Date(dueDate)
+    const today = new Date()
+    const diffTime = due.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const weeksRemaining = Math.floor(diffDays / 7)
+    const currentWeek = 40 - weeksRemaining
+    return currentWeek > 0 && currentWeek <= 40 ? currentWeek : null
+  }
 
   const getTrimester = (week: number) => {
     if (week <= 13) return 1
@@ -108,6 +151,14 @@ export default function PregnancyTrackerPage() {
 
   const handleNextWeek = () => {
     if (currentWeek < 40) setCurrentWeek(currentWeek + 1)
+  }
+
+  if (!user || isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
