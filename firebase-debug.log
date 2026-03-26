@@ -1,0 +1,120 @@
+[debug] [2026-03-26T08:03:58.780Z] ----------------------------------------------------------------------
+[debug] [2026-03-26T08:03:58.783Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy
+[debug] [2026-03-26T08:03:58.783Z] CLI Version:   15.1.0
+[debug] [2026-03-26T08:03:58.783Z] Platform:      linux
+[debug] [2026-03-26T08:03:58.784Z] Node Version:  v20.19.1
+[debug] [2026-03-26T08:03:58.784Z] Time:          Thu Mar 26 2026 08:03:58 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-03-26T08:03:58.784Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-26T08:03:58.787Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-03-26T08:04:02.116Z] No OAuth tokens found
+[debug] [2026-03-26T08:04:02.117Z] No OAuth tokens found
+[error] Failed to fetch Firebase Project from current Studio Workspace: Unable to refresh auth: not yet authenticated.
+[debug] [2026-03-26T08:04:02.122Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-03-26T08:04:02.505Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-03-26T08:04:02.506Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-03-26T08:04:10.561Z] Running auto auth
+[debug] [2026-03-26T08:04:10.583Z] [iam] checking project mama-care-7b140 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-03-26T08:04:10.585Z] No OAuth tokens found
+[debug] [2026-03-26T08:04:10.585Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions [none]
+[debug] [2026-03-26T08:04:10.585Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions x-goog-quota-user=projects/mama-care-7b140
+[debug] [2026-03-26T08:04:10.585Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-26T08:04:10.984Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions 200
+[debug] [2026-03-26T08:04:10.985Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions {}
+[debug] [2026-03-26T08:04:10.985Z] [iam] error while checking permissions, command may fail: Authorization failed. This account is missing the following required permissions on project mama-care-7b140:
+
+  firebase.projects.get
+  firebasehosting.sites.update
+[debug] [2026-03-26T08:04:10.986Z] No OAuth tokens found
+[debug] [2026-03-26T08:04:10.986Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 [none]
+[debug] [2026-03-26T08:04:11.309Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 403
+[debug] [2026-03-26T08:04:11.309Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[debug] [2026-03-26T08:04:11.311Z] Request to https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 had HTTP Error: 403, The caller does not have permission
+[debug] [2026-03-26T08:04:11.312Z] FirebaseError: Request to https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 had HTTP Error: 403, The caller does not have permission
+    at responseToError (/nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/responseToError.js:53:12)
+    at RetryOperation._fn (/nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/apiv2.js:322:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[error] 
+[error] Error: Failed to get Firebase project mama-care-7b140. Please make sure the project exists and your account has permission to access it.
+[debug] [2026-03-26T08:04:28.291Z] ----------------------------------------------------------------------
+[debug] [2026-03-26T08:04:28.294Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy
+[debug] [2026-03-26T08:04:28.294Z] CLI Version:   15.1.0
+[debug] [2026-03-26T08:04:28.294Z] Platform:      linux
+[debug] [2026-03-26T08:04:28.294Z] Node Version:  v20.19.1
+[debug] [2026-03-26T08:04:28.295Z] Time:          Thu Mar 26 2026 08:04:28 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-03-26T08:04:28.295Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-26T08:04:29.684Z] No OAuth tokens found
+[debug] [2026-03-26T08:04:29.685Z] No OAuth tokens found
+[error] Failed to fetch Firebase Project from current Studio Workspace: Unable to refresh auth: not yet authenticated.
+[debug] [2026-03-26T08:04:29.691Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-03-26T08:04:29.692Z] > authorizing via signed-in user (kaiyanalove18@gmail.com)
+[debug] [2026-03-26T08:04:29.692Z] [iam] checking project mama-care-7b140 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-03-26T08:04:29.692Z] No OAuth tokens found
+[debug] [2026-03-26T08:04:29.693Z] No OAuth tokens found
+[debug] [2026-03-26T08:04:29.693Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-03-26T08:04:29.693Z] > authorizing via signed-in user (kaiyanalove18@gmail.com)
+[debug] [2026-03-26T08:04:29.695Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions [none]
+[debug] [2026-03-26T08:04:29.695Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions x-goog-quota-user=projects/mama-care-7b140
+[debug] [2026-03-26T08:04:29.695Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-26T08:04:30.847Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions 200
+[debug] [2026-03-26T08:04:30.847Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions {}
+[debug] [2026-03-26T08:04:30.848Z] [iam] error while checking permissions, command may fail: Authorization failed. This account is missing the following required permissions on project mama-care-7b140:
+
+  firebase.projects.get
+  firebasehosting.sites.update
+[debug] [2026-03-26T08:04:30.849Z] No OAuth tokens found
+[debug] [2026-03-26T08:04:30.849Z] No OAuth tokens found
+[debug] [2026-03-26T08:04:30.849Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-03-26T08:04:30.849Z] > authorizing via signed-in user (kaiyanalove18@gmail.com)
+[debug] [2026-03-26T08:04:30.850Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 [none]
+[debug] [2026-03-26T08:04:31.099Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 403
+[debug] [2026-03-26T08:04:31.100Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[debug] [2026-03-26T08:04:31.101Z] Request to https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 had HTTP Error: 403, The caller does not have permission
+[debug] [2026-03-26T08:04:31.102Z] FirebaseError: Request to https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 had HTTP Error: 403, The caller does not have permission
+    at responseToError (/nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/responseToError.js:53:12)
+    at RetryOperation._fn (/nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/apiv2.js:322:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[error] 
+[error] Error: Failed to get Firebase project mama-care-7b140. Please make sure the project exists and your account has permission to access it.
+[debug] [2026-03-26T08:13:30.103Z] ----------------------------------------------------------------------
+[debug] [2026-03-26T08:13:30.108Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy
+[debug] [2026-03-26T08:13:30.109Z] CLI Version:   15.1.0
+[debug] [2026-03-26T08:13:30.109Z] Platform:      linux
+[debug] [2026-03-26T08:13:30.109Z] Node Version:  v20.19.1
+[debug] [2026-03-26T08:13:30.109Z] Time:          Thu Mar 26 2026 08:13:30 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-03-26T08:13:30.110Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-26T08:13:32.535Z] No OAuth tokens found
+[debug] [2026-03-26T08:13:32.536Z] No OAuth tokens found
+[error] Failed to fetch Firebase Project from current Studio Workspace: Unable to refresh auth: not yet authenticated.
+[debug] [2026-03-26T08:13:32.542Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-03-26T08:13:32.542Z] > authorizing via signed-in user (kaiyanalove18@gmail.com)
+[debug] [2026-03-26T08:13:32.542Z] [iam] checking project mama-care-7b140 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-03-26T08:13:32.550Z] No OAuth tokens found
+[debug] [2026-03-26T08:13:32.550Z] No OAuth tokens found
+[debug] [2026-03-26T08:13:32.550Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-03-26T08:13:32.551Z] > authorizing via signed-in user (kaiyanalove18@gmail.com)
+[debug] [2026-03-26T08:13:32.556Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions [none]
+[debug] [2026-03-26T08:13:32.557Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions x-goog-quota-user=projects/mama-care-7b140
+[debug] [2026-03-26T08:13:32.557Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-26T08:13:32.946Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions 200
+[debug] [2026-03-26T08:13:32.947Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/mama-care-7b140:testIamPermissions {}
+[debug] [2026-03-26T08:13:32.947Z] [iam] error while checking permissions, command may fail: Authorization failed. This account is missing the following required permissions on project mama-care-7b140:
+
+  firebase.projects.get
+  firebasehosting.sites.update
+[debug] [2026-03-26T08:13:32.948Z] No OAuth tokens found
+[debug] [2026-03-26T08:13:32.948Z] No OAuth tokens found
+[debug] [2026-03-26T08:13:32.948Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-03-26T08:13:32.949Z] > authorizing via signed-in user (kaiyanalove18@gmail.com)
+[debug] [2026-03-26T08:13:32.950Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 [none]
+[debug] [2026-03-26T08:13:33.215Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 403
+[debug] [2026-03-26T08:13:33.216Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[debug] [2026-03-26T08:13:33.217Z] Request to https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 had HTTP Error: 403, The caller does not have permission
+[debug] [2026-03-26T08:13:33.218Z] FirebaseError: Request to https://firebase.googleapis.com/v1beta1/projects/mama-care-7b140 had HTTP Error: 403, The caller does not have permission
+    at responseToError (/nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/responseToError.js:53:12)
+    at RetryOperation._fn (/nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/apiv2.js:322:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+[error] 
+[error] Error: Failed to get Firebase project mama-care-7b140. Please make sure the project exists and your account has permission to access it.
