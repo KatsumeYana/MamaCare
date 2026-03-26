@@ -9,14 +9,25 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, ArrowLeft, Loader2, Calendar, Check } from "lucide-react"
-import { signInWithPopup, AuthProvider } from "firebase/auth"
-import { auth, googleProvider, facebookProvider } from "@/lib/firebase"
+import { signInWithPopup, AuthProvider, createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
+import { auth, db, googleProvider, facebookProvider } from "@/lib/firebase"
+import { doc, setDoc, Timestamp } from "firebase/firestore"
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSocialLoading, setIsSocialLoading] = useState(false)
   const [step, setStep] = useState(1)
+
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    dueDate: "",
+    doctorName: "",
+    isFirstPregnancy: "Yes",
+  })
 
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,16 +37,52 @@ export default function RegisterPage() {
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate registration
-    setTimeout(() => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
+      const user = userCredential.user
+
+      await updateProfile(user, {
+        displayName: `${formData.firstName} ${formData.lastName}`
+      })
+
+      await setDoc(doc(db, "users", user.uid), {
+        profile: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          dueDate: formData.dueDate,
+          doctor: formData.doctorName,
+          pregnancyNumber: formData.isFirstPregnancy === "Yes" ? "1" : "2+",
+        },
+        createdAt: Timestamp.now(),
+      })
+
       window.location.href = "/dashboard"
-    }, 1500)
+    } catch (error: any) {
+      console.error("Registration error:", error)
+      alert(error.message || "Failed to register. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSocialLogin = async (provider: AuthProvider) => {
     setIsSocialLoading(true)
     try {
-      await signInWithPopup(auth, provider)
+      const result = await signInWithPopup(auth, provider)
+      const user = result.user
+      
+      // For social login, we might not have the due date yet, 
+      // but we should still initialize the user doc if it doesn't exist
+      await setDoc(doc(db, "users", user.uid), {
+        profile: {
+          firstName: user.displayName?.split(" ")[0] || "",
+          lastName: user.displayName?.split(" ").slice(1).join(" ") || "",
+          email: user.email || "",
+        },
+        createdAt: Timestamp.now(),
+      }, { merge: true })
+
       window.location.href = "/dashboard"
     } catch (error) {
       console.error("Social login error:", error)
@@ -95,6 +142,8 @@ export default function RegisterPage() {
                       <Input
                         id="firstName"
                         placeholder="Sarah"
+                        value={formData.firstName}
+                        onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                         required
                       />
                     </div>
@@ -103,6 +152,8 @@ export default function RegisterPage() {
                       <Input
                         id="lastName"
                         placeholder="Mitchell"
+                        value={formData.lastName}
+                        onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                         required
                       />
                     </div>
@@ -113,6 +164,8 @@ export default function RegisterPage() {
                       id="email"
                       type="email"
                       placeholder="sarah@example.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
                       required
                     />
                   </div>
@@ -123,6 +176,8 @@ export default function RegisterPage() {
                         id="password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Create a strong password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({...formData, password: e.target.value})}
                         required
                         minLength={8}
                       />
@@ -177,6 +232,8 @@ export default function RegisterPage() {
                     <Input
                       id="dueDate"
                       type="date"
+                      value={formData.dueDate}
+                      onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
                       required
                     />
                     <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -188,11 +245,21 @@ export default function RegisterPage() {
                 <div className="space-y-2">
                   <Label htmlFor="pregnancyNumber">Is this your first pregnancy?</Label>
                   <div className="grid grid-cols-2 gap-3">
-                    <Button type="button" variant="outline" className="h-auto py-3 flex flex-col items-center gap-1">
+                    <Button 
+                      type="button" 
+                      variant={formData.isFirstPregnancy === "Yes" ? "default" : "outline"} 
+                      className="h-auto py-3 flex flex-col items-center gap-1"
+                      onClick={() => setFormData({...formData, isFirstPregnancy: "Yes"})}
+                    >
                       <span className="font-medium">Yes</span>
                       <span className="text-xs text-muted-foreground">First time</span>
                     </Button>
-                    <Button type="button" variant="outline" className="h-auto py-3 flex flex-col items-center gap-1">
+                    <Button 
+                      type="button" 
+                      variant={formData.isFirstPregnancy === "No" ? "default" : "outline"} 
+                      className="h-auto py-3 flex flex-col items-center gap-1"
+                      onClick={() => setFormData({...formData, isFirstPregnancy: "No"})}
+                    >
                       <span className="font-medium">No</span>
                       <span className="text-xs text-muted-foreground">I&apos;ve been pregnant before</span>
                     </Button>
@@ -203,6 +270,8 @@ export default function RegisterPage() {
                   <Input
                     id="doctorName"
                     placeholder="Dr. Emily Chen"
+                    value={formData.doctorName}
+                    onChange={(e) => setFormData({...formData, doctorName: e.target.value})}
                   />
                 </div>
                 <div className="flex gap-3">

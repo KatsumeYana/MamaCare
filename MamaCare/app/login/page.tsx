@@ -9,21 +9,28 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react"
-import { signInWithPopup, AuthProvider } from "firebase/auth"
+import { signInWithPopup, AuthProvider, signInWithEmailAndPassword } from "firebase/auth"
 import { auth, googleProvider, facebookProvider } from "@/lib/firebase"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSocialLoading, setIsSocialLoading] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate login
-    setTimeout(() => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
       window.location.href = "/dashboard"
-    }, 1500)
+    } catch (error: any) {
+      console.error("Login error:", error)
+      alert(error.message || "Failed to sign in. Please check your credentials.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSocialLogin = async (provider: AuthProvider) => {
@@ -71,6 +78,8 @@ export default function LoginPage() {
                   id="email"
                   type="email"
                   placeholder="sarah@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
@@ -86,6 +95,8 @@ export default function LoginPage() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                   <button
